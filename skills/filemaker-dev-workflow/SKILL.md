@@ -4,9 +4,10 @@ description: >-
   Generic FileMaker + AI agent collaboration on a shared FileMaker Server
   (dev/staging/prod): roles (agent vs human in Pro), deploy HTML to the .fmp12,
   paste scripts as XMSS one-at-a-time, WebDirect vs Pro / Data API pitfalls.
-  Use when working with FileMaker, .fmp12, FileMaker Server, WebDirect, Web
-  Viewer, WEB_ASSETS, Data API, XMSS, Script Workspace paste, fmxmlsnippet, or
-  when the user asks how to deliver HTML/scripts from a git repo into FM.
+  Ships executable scripts under scripts/. Use when working with FileMaker,
+  .fmp12, FileMaker Server, WebDirect, Web Viewer, WEB_ASSETS, Data API, XMSS,
+  Script Workspace paste, fmxmlsnippet, or when the user asks how to deliver
+  HTML/scripts from a git repo into FM.
 ---
 
 # FileMaker — agent workflow (server-hosted)
@@ -14,121 +15,134 @@ description: >-
 How an **AI coding agent** and a **human in FileMaker Pro** collaborate on a
 `.fmp12` hosted on **FileMaker Server**. Product-agnostic: apply to any app.
 
+## Tools (agent must execute these)
+
+Scripts live in this skill’s `scripts/` directory. Resolve the skill root first
+(wherever it is installed), then run with `python3`:
+
+```bash
+SKILL_ROOT="$HOME/.cursor/skills/filemaker-dev-workflow"
+# Also valid if installed via Claude/Codex:
+#   $HOME/.claude/skills/filemaker-dev-workflow
+#   $HOME/.codex/skills/filemaker-dev-workflow
+# Or the clone: .../agent-skills-filemaker/skills/filemaker-dev-workflow
+```
+
+| Script | When | Command |
+|--------|------|---------|
+| `scripts/fm_push_web_asset.py` | Deliver HTML into FM via Data API (preferred) | `python3 "$SKILL_ROOT/scripts/fm_push_web_asset.py" --html web/index.html --env .env.local` |
+| `scripts/copy_text_clipboard.py` | Fallback: plain-text HTML to clipboard | `python3 "$SKILL_ROOT/scripts/copy_text_clipboard.py" web/index.html` |
+| `scripts/copy_fm_clipboard.py` | Put script steps on clipboard as **XMSS** | `python3 "$SKILL_ROOT/scripts/copy_fm_clipboard.py" path/to/Script_steps.xml` |
+
+**Rules for the agent:**
+
+1. Prefer `$SKILL_ROOT/scripts/...` over inventing one-off paste commands.
+2. Never `pbcopy` raw `.xml` for Script Workspace — that is not XMSS; use `copy_fm_clipboard.py`.
+3. If the **product repo** already has equivalent tools, use those instead (same job).
+4. If a script converter exists in the product repo (text → fmxmlsnippet), run it **before** `copy_fm_clipboard.py`. This skill does not ship a converter (formats vary by project).
+5. Dependencies: `curl`; for XMSS on Mac: `pip3 install pyobjc-framework-Cocoa`.
+
+### `fm_push_web_asset.py` options
+
+```bash
+python3 "$SKILL_ROOT/scripts/fm_push_web_asset.py" \
+  --html web/index.html \
+  --env .env.local \
+  --layout "Data WEB_ASSETS" \
+  --filename index.html \
+  --find-layout "App Web" \
+  --reload-hint "App Web → run your reload/ForceShow script"
+```
+
+Needs `FM_DATA_API_BASE_URL`, `FM_DATA_API_DATABASE`, `FM_DATA_API_ACCOUNT`, `FM_DATA_API_PASSWORD` in the env file.
+
 ## Roles (do not invert)
 
 | Who | Does |
 |-----|------|
-| **Agent** | Edits the git repo (HTML/JS, script sources, docs, tools). Prepares clipboard payloads. Pushes HTML when a project tool exists. Guides paste/reload. Never assumes “in git” means “in the .fmp12”. |
-| **Human** | Everything that only FileMaker can do: tables, fields, relationships, layouts, privilege sets, creating empty scripts, pasting steps in Script Workspace, running reload/boot scripts, smoke tests in Pro and WebDirect. |
+| **Agent** | Edits git; runs the tools above; guides paste/reload. Never assumes “in git” means “in the .fmp12”. |
+| **Human** | Tables, fields, layouts, privileges, create empty scripts, paste in Script Workspace, run reload/boot, smoke Pro/WebDirect. |
 
 **Golden rule:** the Server `.fmp12` is the runtime. Git is the source of truth for *text*. Delivery is a separate step.
 
 ## Discover the project (first)
 
-Before prescribing commands, inspect the repo and ask if unclear:
-
 1. **Host / file:** FMS hostname, database name, WebDirect URL.
-2. **UI pattern:** Web Viewer + HTML in a table (common) vs native layouts only.
-3. **Script sources:** `.txt` / `.xml` under `scripts/` (or similar) vs scripts only inside FM.
-4. **Deploy tools:** e.g. a Data API push script for HTML, or XMSS clipboard helpers. Use them if present; otherwise fall back to manual steps below.
-5. **Tracker:** if the team uses ClickUp/Jira/etc., follow *that* project’s closing rules — do not invent a tracker.
+2. **UI pattern:** Web Viewer + HTML table vs native layouts only.
+3. **Script sources:** `.txt` / `.xml` under `scripts/` vs only inside FM.
+4. **Env file** for Data API (usually `.env.local` in the product repo).
+5. **Tracker:** follow the team’s ClickUp/Jira rules if any — do not invent one.
 
-Do not hardcode product names, tenants, or business features into this workflow.
+Do not hardcode product names, tenants, or business features.
 
 ## Mental model (typical HTML-in-FM app)
 
-Many projects store the UI inside the file:
-
 - One (or few) `.fmp12` on FMS.
-- HTML/CSS/JS in a container/text table (often named like `WEB_ASSETS`) referenced by a Web Viewer.
-- Browser/WebDirect talks to FM via `FileMaker.PerformScript` → scripts return JSON (or similar) back into the viewer.
-- WebDirect often needs `data:text/html,...` (not `file://`) for the viewer.
+- HTML in a text/container table (often `WEB_ASSETS`) + Web Viewer.
+- JS → `FileMaker.PerformScript` → scripts → JSON back.
+- WebDirect usually needs `data:text/html,...` (not `file://`).
 
-**Suggested conventions** (adopt if the project has none):
+Suggested conventions if the project has none: tables `UPPER_SNAKE`, fields `PascalCase`, scripts English, UI copy in the project language.
 
-| Layer | Convention |
-|-------|------------|
-| Tables | `UPPER_SNAKE` |
-| Fields | `PascalCase` |
-| Scripts | English names |
-| End-user UI copy | Project language (often Spanish) |
+## Delivery order
 
-Adapt to existing naming; do not rename a mature file for style alone.
+### 1. HTML first
 
-## Delivery order (when both UI and scripts change)
+```bash
+python3 "$SKILL_ROOT/scripts/fm_push_web_asset.py" --html web/index.html --env .env.local
+```
 
-### 1. HTML / web assets first
+Then tell the human which reload script to run.
 
-**Preferred (if the repo has a push tool + Data API credentials):** run that tool against the target environment (dev/staging/prod). Credentials live in local env files — never commit them.
+Fallback if Data API fails:
 
-**Fallback:** copy the HTML to the clipboard → open the assets layout in Pro → paste into the content field → Commit → run the project’s reload script (names vary: ForceShow, ReloadWeb, BuildWebHtml, etc.).
+```bash
+python3 "$SKILL_ROOT/scripts/copy_text_clipboard.py" web/index.html
+```
 
-Avoid loading hosted Web Viewers via `file://` or fragile “Insert from URL” of a local path — on Server this often yields empty content.
-
-Tell the human explicitly which reload/boot script to run after the push.
+→ human pastes into assets layout → Commit → reload.
 
 ### 2. Scripts second — one at a time
 
-FileMaker Script Workspace does **not** accept raw XML text paste. Steps must be on the clipboard as **XMSS** (FileMaker’s internal script-steps pasteboard type).
+```bash
+# If the product repo has a converter, run it first, then:
+python3 "$SKILL_ROOT/scripts/copy_fm_clipboard.py" path/to/Script_steps.xml
+```
 
-If the repo provides converters/helpers (e.g. text → fmxmlsnippet → XMSS clipboard), use them. Otherwise:
+Human: Script Workspace → select all → Delete → Paste → Save.
 
-- Use a known XMSS clipboard utility (e.g. Codence FM Clipboard Tool), or
-- Recreate steps manually from the documented source.
-
-Human loop per script:
-
-1. Open Script Workspace → target script  
-2. Select all steps → Delete  
-3. Paste → Save  
-
-**Queue:** number the scripts; wait for **“listo” / “next” / “siguiente”** before putting the next one on the clipboard. Always state what is on the clipboard *now*.
-
-After paste, spot-check that steps look complete (variables, URLs, layout names). Some step types (notably Insert from URL options) may need a one-time manual fix after paste.
+**Queue:** wait for “listo” / “next” / “siguiente” before the next script. State what is on the clipboard *now*.
 
 ## Pro vs WebDirect
 
 | Client | Typical write path |
 |--------|--------------------|
-| **FileMaker Pro** | Native script steps (Set Field, Commit, etc.) |
-| **WebDirect** | Prefer **Data API** (or other non-remounting path) for writes that would otherwise Commit on the Web Viewer layout and remount the HTML |
+| **Pro** | Native Set Field / Commit |
+| **WebDirect** | Prefer Data API (or non-remounting path) so the Web Viewer does not remount |
 
-Keep sessions separate in your head:
-
-- App session (logged-in end user) ≠ Data API technical session/token.
-
-Environment config for Data API (host, database, technical account) usually lives in a table or globals inside the `.fmp12` and/or local `.env` for agent tools — confirm per project.
-
-**WebDirect pitfall:** aggressive Commit / OnLayoutEnter on the viewer layout remounts the Web Viewer and can wipe in-memory UI state (roles, shells, SPA state). Use project guards (skip flags, no reassign of viewer source after ready) when editing those scripts.
+App session ≠ Data API technical token. Heavy Commit on the viewer layout in WD remounts HTML and can wipe UI state.
 
 ## Collaboration style
 
-1. Prefer short, numbered paste/reload instructions the human can follow without guessing.
-2. Ship small, testable slices; state smoke steps for Pro and/or WebDirect.
-3. Match the user’s language for chat (often Spanish); keep script identifiers as in the file.
-4. Never claim something is live on Server until push/paste + reload were done (or the user confirmed).
+1. Short numbered paste/reload instructions.
+2. Small slices + explicit smoke steps.
+3. Match the user’s chat language; keep FM identifiers as in the file.
+4. Never claim “live on Server” until push/paste + reload (or user confirm).
 
 ## Close-out (if the team tracks work)
 
-When finishing a slice, leave a trail in the team’s tracker:
-
-- What changed (UI / scripts / schema)
-- Git commit/PR if any
-- What was pasted or pushed into FM
-- What to smoke / what remains
-
-Record **real** time only; ask if unknown. Mark done only when the deliverable is actually in FM or explicitly deferred.
+Summarize UI/scripts/schema, git ref, what was pushed/pasted, smoke/remaining. Real time only; ask if unknown.
 
 ## Quick checklist
 
 ```
 - [ ] Repo changes ready
-- [ ] HTML/assets delivered into .fmp12 + reload run
-- [ ] Scripts pasted one-by-one (XMSS) with confirmation between each
-- [ ] Smoke on Pro and/or WebDirect on the target host
-- [ ] Tracker note (if the team uses one)
+- [ ] fm_push_web_asset.py (or clipboard fallback) + reload
+- [ ] copy_fm_clipboard.py one script at a time
+- [ ] Smoke Pro and/or WebDirect
+- [ ] Tracker note (if any)
 ```
 
 ## More detail
 
-- [reference.md](reference.md) — env vars, anti-patterns, optional tool patterns
+- [reference.md](reference.md) — env, anti-patterns, multi-environment

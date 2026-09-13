@@ -8,9 +8,9 @@ Works with **Cursor**, **Claude Code**, **Codex**, and other tools that load ski
 
 | Skill | Scope |
 |-------|--------|
-| [`filemaker-dev-workflow`](skills/filemaker-dev-workflow/) | Agent ↔ human roles, deliver HTML into the `.fmp12`, XMSS script paste (one at a time), Pro vs WebDirect / Data API pitfalls — **product-agnostic** |
+| [`filemaker-dev-workflow`](skills/filemaker-dev-workflow/) | Agent ↔ human roles, deliver HTML into the `.fmp12`, XMSS script paste (one at a time), Pro vs WebDirect — **product-agnostic**, with executable `scripts/` |
 
-No product names, feature lists, or business rules. Each app keeps its own docs in its own repo.
+Includes runnable tools: `fm_push_web_asset.py`, `copy_fm_clipboard.py`, `copy_text_clipboard.py`. No product names or business rules — each app keeps those in its own repo.
 
 ## Distribute
 

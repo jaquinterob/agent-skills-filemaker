@@ -57,15 +57,17 @@ After delivery:
 3. One read and one write path related to the change.
 4. If WebDirect + Data API writes: confirm the viewer does **not** remount / lose session shell after save.
 
-## Optional repo helpers
+## Bundled tools (this skill)
 
-Projects may include scripts such as:
+| Script | Role |
+|--------|------|
+| `scripts/fm_push_web_asset.py` | PATCH/POST HTML into assets layout via Data API |
+| `scripts/copy_text_clipboard.py` | Plain-text clipboard fallback for HTML |
+| `scripts/copy_fm_clipboard.py` | XMSS clipboard for Script Workspace (macOS + PyObjC) |
 
-- Push HTML → assets table via Data API
-- Convert human-readable script text → `fmxmlsnippet` XML
-- Copy XML to macOS clipboard as XMSS (often needs PyObjC / Cocoa pasteboard)
+Always prefer these (or the product repo’s equivalents) over ad-hoc commands.
 
-If missing, fall back to manual paste utilities (e.g. Codence FM Clipboard Tool) or hand-built steps.
+**Not bundled:** text→fmxmlsnippet converters (project-specific). If the product has one, run it before `copy_fm_clipboard.py`. Otherwise use Codence FM Clipboard Tool or hand-built steps.
 
 ## Multi-environment
 
