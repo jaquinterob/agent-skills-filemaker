@@ -15,15 +15,27 @@ If the project pushes HTML or data via Data API from the agent machine, keep sec
 
 Inside the `.fmp12`, many teams also store per-environment rows (host match, base URL, account) so WebDirect scripts can call Data API without hardcoding.
 
-## Layout patterns (common, not mandatory)
+## Recommended UI stack (Web Viewer)
+
+Default for apps built with this skill:
+
+1. **Layout** (e.g. `App Web`) hosts a full-bleed **Web Viewer**.
+2. Viewer options: Allow interaction + Allow JavaScript to perform FileMaker scripts.
+3. Source = `"data:text/html," & <asset>::Content` via global/calc (e.g. `$$WebHtmlSource`).
+4. Table **`WEB_ASSETS`**: `FileName`, `Content` (HTML+CSS+JS), `MimeType`, optional `FolderPath`.
+5. Git `web/` is edited by the agent; runtime is always `WEB_ASSETS::Content` inside the `.fmp12`.
+
+Do **not** recommend external CDN/`file://` as the primary WebDirect delivery path.
+
+## Layout patterns
 
 | Kind | Role |
 |------|------|
 | App / shell layout | Hosts the Web Viewer |
-| Assets layout | Edit stored HTML/CSS/JS records by hand |
+| Assets layout (e.g. `Data WEB_ASSETS`) | Edit `Content` by hand / Data API target |
 | Thin `API_*` layouts | Minimal fields for Find / Set Field / Data API |
 
-Names vary by project — discover from the file or docs.
+Names vary — discover from the file if it already exists.
 
 ## Script layering (optional convention)
 

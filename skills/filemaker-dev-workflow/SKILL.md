@@ -75,14 +75,41 @@ Needs `FM_DATA_API_BASE_URL`, `FM_DATA_API_DATABASE`, `FM_DATA_API_ACCOUNT`, `FM
 
 Do not hardcode product names, tenants, or business features.
 
-## Mental model (typical HTML-in-FM app)
+## Recommended architecture (default for new apps)
 
-- One (or few) `.fmp12` on FMS.
-- HTML in a text/container table (often `WEB_ASSETS`) + Web Viewer.
-- JS → `FileMaker.PerformScript` → scripts → JSON back.
-- WebDirect usually needs `data:text/html,...` (not `file://`).
+Prefer this stack unless the product already chose another UI path:
 
-Suggested conventions if the project has none: tables `UPPER_SNAKE`, fields `PascalCase`, scripts English, UI copy in the project language.
+| Layer | Recommendation |
+|-------|----------------|
+| Runtime | One `.fmp12` on FileMaker Server (+ WebDirect if users use the browser) |
+| UI surface | Layout with a **Web Viewer** (interaction + “Allow JavaScript to perform FileMaker scripts”) |
+| HTML/CSS/JS storage | Table **`WEB_ASSETS`** — text field **`Content`** holds the asset body |
+| Asset identity | Fields **`FileName`** (+ optional `FolderPath`, `MimeType`) |
+| Viewer source | Global or calc (e.g. `$$WebHtmlSource` / `gWebHtml`) = `"data:text/html," & WEB_ASSETS::Content` |
+| Git | `web/` (or similar) is **dev only** — not deployed as a folder on the Server |
+| Bridge | JS → `FileMaker.PerformScript("ScriptName", json)` → FM scripts → JSON / `Perform JavaScript` back |
+
+### Why this shape
+
+- WebDirect cannot reliably load local `file://` or external `<link>`/`<script src>` for app CSS/JS.
+- Ship **one packaged HTML** (CSS/JS **inline** or concatenated into `Content`) inside the `.fmp12`.
+- Reload after push: a boot/reload script that rebuilds the `data:text/html,...` string and sets the Web Viewer (names vary: ForceShow, ReloadWeb, BuildWebHtml).
+
+### `WEB_ASSETS` (recommended schema)
+
+| Field | Type | Role |
+|-------|------|------|
+| `FileName` | Text | e.g. `index.html` |
+| `Content` | Text | Full HTML (with inline CSS/JS) or other asset text |
+| `MimeType` | Text | e.g. `text/html` |
+| `FolderPath` | Text | Optional path segment |
+| `UpdatedAt` | Timestamp | Optional |
+
+Push tools write **`Content`** (and usually `FileName` / `MimeType`). The human then runs the reload script so the Web Viewer re-reads the variable/`data:` URL.
+
+If an existing file uses different names, **discover and adapt** — do not rename a mature schema for style alone.
+
+Suggested naming if starting fresh: tables `UPPER_SNAKE`, fields `PascalCase`, scripts English, UI copy in the project language.
 
 ## Delivery order
 
