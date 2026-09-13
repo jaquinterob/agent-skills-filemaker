@@ -1,22 +1,22 @@
-# Agent Skills — FileMaker (fms-dev)
+# Agent Skills — FileMaker (generic)
 
-Skills portables (estándar [Agent Skills](https://agentskills.io) / `SKILL.md`) para trabajar proyectos FileMaker en el servidor de desarrollo **fms-dev**.
+Portable [Agent Skills](https://agentskills.io) (`SKILL.md`) for collaborating with an AI agent on **any** FileMaker project hosted on FileMaker Server.
 
-Compatible con **Cursor**, **Claude Code**, **Codex** y cualquier herramienta que lea carpetas `SKILL.md`.
+Works with **Cursor**, **Claude Code**, **Codex**, and other tools that load skill folders.
 
-## Skills incluidas
+## Skills
 
-| Skill | Qué cubre |
-|-------|-----------|
-| [`filemaker-dev-workflow`](skills/filemaker-dev-workflow/) | Roles agente↔usuario, push HTML (Data API), pegado XMSS de a uno, Pro vs WebDirect, ClickUp |
+| Skill | Scope |
+|-------|--------|
+| [`filemaker-dev-workflow`](skills/filemaker-dev-workflow/) | Agent ↔ human roles, deliver HTML into the `.fmp12`, XMSS script paste (one at a time), Pro vs WebDirect / Data API pitfalls — **product-agnostic** |
 
-## Mejor forma de distribuir (recomendado)
+No product names, feature lists, or business rules. Each app keeps its own docs in its own repo.
 
-1. **Este repo** como fuente de verdad del equipo.
-2. Cada compañero **clona e instala** en su máquina (o lo enlaza el agente).
-3. Opcional: copiar la skill también a un repo de producto (`.cursor/skills/` + `.claude/skills/`) si solo aplica a ese proyecto.
+## Distribute
 
-No hace falta un plugin distinto por herramienta: el formato es el mismo folder + `SKILL.md`.
+1. This repo = team source of truth.
+2. Each person clones + installs (or the agent installs for them).
+3. Optional: copy into a product repo under `.cursor/skills/` and `.claude/skills/` if the skill should travel with that project only.
 
 ```
 agent-skills-filemaker/
@@ -28,53 +28,43 @@ agent-skills-filemaker/
         └── reference.md
 ```
 
-## Instalación rápida
+## Install
 
 ```bash
 git clone https://github.com/jaquinterob/agent-skills-filemaker.git
 cd agent-skills-filemaker
 ./install.sh          # Cursor + Claude + Codex (symlink)
-# ./install.sh --copy # copia en vez de symlink
-# ./install.sh cursor # solo Cursor
+# ./install.sh --copy # copy instead of symlink
+# ./install.sh cursor # Cursor only
 ```
 
-### Dónde queda instalada
-
-| Herramienta | Ruta personal |
-|-------------|---------------|
+| Tool | Personal path |
+|------|----------------|
 | Cursor | `~/.cursor/skills/<skill>/` |
 | Claude Code | `~/.claude/skills/<skill>/` |
 | Codex | `~/.codex/skills/<skill>/` |
 
-### Solo un proyecto (compartir con quien clone el producto)
-
-Copia o submodule dentro del repo de la app:
+### Inside a product repo
 
 ```bash
-# Ejemplo en un repo FileMaker
 mkdir -p .cursor/skills .claude/skills
-cp -R /ruta/a/agent-skills-filemaker/skills/filemaker-dev-workflow .cursor/skills/
-cp -R /ruta/a/agent-skills-filemaker/skills/filemaker-dev-workflow .claude/skills/
+cp -R skills/filemaker-dev-workflow .cursor/skills/
+cp -R skills/filemaker-dev-workflow .claude/skills/
 ```
 
-Cursor lee `.cursor/skills/`; Claude Code lee `.claude/skills/`. Conviene duplicar (o symlink) si el equipo usa ambas.
-
-### Codex desde GitHub
-
-Si usas el instalador de Codex:
+### Codex from GitHub
 
 ```text
-Instala la skill desde jaquinterob/agent-skills-filemaker path skills/filemaker-dev-workflow
+Install the skill from jaquinterob/agent-skills-filemaker path skills/filemaker-dev-workflow
 ```
 
-## Actualizar
+## Update
 
 ```bash
 cd agent-skills-filemaker && git pull
-# Si instalaste con symlink, ya está actualizado.
-# Si usaste --copy, vuelve a correr: ./install.sh --copy
+# Symlink installs update automatically; --copy needs ./install.sh --copy again
 ```
 
-## Privacidad
+## Secrets
 
-Repo pensado para el equipo. No incluye secretos (`.env`, passwords Data API). Esos viven en cada máquina / `.env.local` del proyecto FileMaker.
+This repo must stay free of `.env`, Data API passwords, and file-specific credentials. Those belong on each machine / product repo (gitignored).

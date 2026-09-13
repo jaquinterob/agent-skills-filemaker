@@ -1,70 +1,80 @@
-# Referencia — FileMaker fms-dev
+# Reference — FileMaker agent workflow
 
-Detalle opcional; leer solo si hace falta.
+Optional detail. Product-agnostic.
 
-## Credenciales / env (agente)
+## Credentials (agent tools)
 
-En el repo del proyecto, `.env.local` (nunca commitear):
+If the project pushes HTML or data via Data API from the agent machine, keep secrets in a **local** env file (e.g. `.env.local`), never in git:
 
-| Variable | Uso |
-|----------|-----|
-| `FM_DATA_API_BASE_URL` | `https://fms-dev.celerix.com/fmi/data/vLatest` |
-| `FM_DATA_API_DATABASE` | Nombre del archivo en FMS |
-| `FM_DATA_API_ACCOUNT` | Cuenta técnica con privilegio **fmrest** |
-| `FM_DATA_API_PASSWORD` | Password de esa cuenta |
+| Typical variable | Meaning |
+|------------------|---------|
+| `FM_DATA_API_BASE_URL` | `https://<fms-host>/fmi/data/vLatest` |
+| `FM_DATA_API_DATABASE` | Exact file name on FMS |
+| `FM_DATA_API_ACCOUNT` | Technical account with **fmrest** |
+| `FM_DATA_API_PASSWORD` | That account’s password |
 
-Dentro del `.fmp12`, tabla `DATA_API_ENV` con fila activa cuyo `HostMatch` coincida con el host de fms-dev.
+Inside the `.fmp12`, many teams also store per-environment rows (host match, base URL, account) so WebDirect scripts can call Data API without hardcoding.
 
-## Layouts habituales
+## Layout patterns (common, not mandatory)
 
-| Layout | Uso |
-|--------|-----|
-| `App Web` | Web Viewer + UI |
-| `Data WEB_ASSETS` | Editar HTML a mano (fallback) |
-| `API_*` | Layouts mínimos para Data API / Find / Set Field |
+| Kind | Role |
+|------|------|
+| App / shell layout | Hosts the Web Viewer |
+| Assets layout | Edit stored HTML/CSS/JS records by hand |
+| Thin `API_*` layouts | Minimal fields for Find / Set Field / Data API |
 
-## Scripts: capas
+Names vary by project — discover from the file or docs.
 
-| Prefijo | Rol |
-|---------|-----|
-| `API_*` | Lógica / JSON |
-| `WV_Call_*` | Puente desde Web Viewer (`Perform Script`) |
-| `*_DataApi` | Misma operación vía HTTP Data API (WebDirect) |
-| `UTIL_DataApi_*` | Login token, Request, Http |
-| `WV_*` | Boot, ForceShow, Reload, AfterWebReady |
+## Script layering (optional convention)
 
-## Anti-patrones
+| Prefix / suffix | Role |
+|-----------------|------|
+| `API_*` | Business logic + JSON (or equivalent) response |
+| Bridge / `WV_Call_*` | Thin entry from Web Viewer → API script |
+| `*_DataApi` | Same operation via HTTP Data API (WebDirect-friendly) |
+| `UTIL_*` | Shared helpers (token, HTTP, encoding) |
+| Boot / reload | Load or refresh the Web Viewer HTML |
 
-| No hacer | Por qué |
-|----------|---------|
-| `pbcopy` del `.xml` y pegar en Script Workspace | No es XMSS; no pegan pasos |
-| Dar por hecho que el HTML del repo está en FMS | Hay que `fm_push` + `WV_ForceShow` |
-| Pegar varios scripts sin confirmación | El portapapeles se pisa; el usuario se pierde |
-| `UTIL_LoadIndexHtml` / file:// en hosted | Length=0 frecuente |
-| Commit en layout App Web sin `$$SkipWVEnter` (WD) | Remonta WV → cae a vista empleado |
-| Commit de `.env.local` o passwords | Secretos |
+Use whatever the project already uses.
 
-## Multi-tenant (Soltrech Ideas)
+## Anti-patterns
 
-En fms-dev típico: ITG=1, CTG=2, SBX=4. Confirmar con `API_Tenants` si se recrea. `WEB_ASSETS` / `DATA_API_ENV` son globales; el aislamiento es por `TenantId` en datos de negocio.
+| Don’t | Why |
+|-------|-----|
+| `pbcopy` raw `.xml` into Script Workspace | Not XMSS — paste does nothing useful |
+| Assume git == Server | Must push/paste + reload |
+| Paste many scripts without confirmation | Clipboard overwrite; human loses place |
+| `file://` HTML on hosted FMS | Often empty / Length 0 |
+| Heavy Commit on the Web Viewer layout in WebDirect | Remounts viewer; loses UI state |
+| Commit secrets (`.env`, passwords) | Leak risk |
 
-## Smoke mínimo post-deploy
+## Smoke (generic)
 
-1. Abrir App Web (Pro o WebDirect en fms-dev).
-2. Login admin + empleado.
-3. Una lectura (listar ideas) y una escritura relevante al cambio.
-4. Si tocaste Data API: verificar que WD no remonte el shell admin tras guardar.
+After delivery:
 
-## Herramientas del repo
+1. Open the app layout (Pro and/or WebDirect on the target host).
+2. Exercise auth / main entry if the change touches it.
+3. One read and one write path related to the change.
+4. If WebDirect + Data API writes: confirm the viewer does **not** remount / lose session shell after save.
 
-```bash
-# Push HTML
-python3 tools/fm_push_index_html.py
-python3 tools/fm_push_index_html.py --dry-run
+## Optional repo helpers
 
-# Regenerar + copiar script
-python3 scripts/xml/txt_to_fmxml.py scripts/API_Foo.txt scripts/xml/API_Foo_steps.xml
-python3 scripts/xml/copy_fm_clipboard.py scripts/xml/API_Foo_steps.xml
-```
+Projects may include scripts such as:
 
-Dependencia Mac para XMSS: `pyobjc-framework-Cocoa`. Si falla el copy, fallback: FM Clipboard Tool (Codence).
+- Push HTML → assets table via Data API
+- Convert human-readable script text → `fmxmlsnippet` XML
+- Copy XML to macOS clipboard as XMSS (often needs PyObjC / Cocoa pasteboard)
+
+If missing, fall back to manual paste utilities (e.g. Codence FM Clipboard Tool) or hand-built steps.
+
+## Multi-environment
+
+When moving a file across hosts:
+
+1. Host `.fmp12` on the target FMS; enable Data API if used.
+2. Technical account with **fmrest** + outbound URL privileges as needed.
+3. Environment row / config for that host.
+4. Confirm Web Viewer HTML is current; run reload.
+5. Smoke login + one write.
+
+Isolation (tenants, companies, sandboxes) is **per product** — read that project’s docs; do not assume IDs or names from other apps.
