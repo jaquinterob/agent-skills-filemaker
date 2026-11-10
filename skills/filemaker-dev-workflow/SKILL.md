@@ -8,6 +8,13 @@ description: >-
   user mentions FileMaker, .fmp12, FileMaker Server, WebDirect, Web Viewer,
   WEB_ASSETS, Data API, XMSS, fmxmlsnippet, Script Workspace, pegar scripts,
   empujar HTML, fms-dev, or delivering git HTML/scripts into a hosted .fmp12.
+license: MIT
+compatibility: >-
+  Requires python3 and curl. Data API push needs network + .env with
+  FM_DATA_API_*. XMSS clipboard paste requires macOS + PyObjC.
+metadata:
+  author: jaquinterob
+  version: "1.0.0"
 ---
 
 # FileMaker — agent workflow (server-hosted)
